@@ -1,0 +1,152 @@
+%% load OFC data
+load('Y:\Maggie\Chronic_implant\Npxl\Optotagged_cells\all_cells_2025-06-02.mat');
+
+%% reduce struct to only OFC neurons
+[cells,~] = OnTarget(all_SU,all_S,all_index,'OFC');
+[all_SU,all_S,all_index] = reduce_index(all_index,all_S, all_SU, cells);
+
+%reduce index so that all 3 blocks and 5 rewards are represented
+for i = 1:length(all_S)
+    S1 = all_S{i};
+    rb(i) = length(unique(S1.Block))==3 & length(unique(S1.RewardAmount))==5;
+end
+cells = find(ismember(cell2mat(all_index(:,4)),find(rb)));
+[all_SU,all_S,all_index] = reduce_index(all_index,all_S, all_SU, cells);
+
+% reduce to include at least 2 trials in each block of each volume
+j=1;
+for i = 1:length(all_S)
+    S1 = all_S{i};
+    S1.RewardAmount = convertreward(S1.RewardAmount);
+    mix = length(S1.Block==1 & S1.hits==1);
+    low = length(S1.Block==3 & S1.RewardAmount<4 & S1.hits==1);
+    high = length(S1.Block==2 & S1.RewardAmount>2 & S1.hits==1);
+    if mix>1 && low >1 && high>1
+        includesession(j) = i;
+        j= j+1;
+    end
+end
+cells = find(ismember(cell2mat(all_index(:,4)),find(includesession)));
+[all_SU,all_S,all_index] = reduce_index(all_index,all_S, all_SU, cells);
+
+%% calculate max trials
+N = length(cells);
+S = 3; %rewards
+D = 2; %blocks
+T = all_SU{1}.xvec.CON; %time
+trialNum = [];
+trialNumlow = [];
+
+for n = 1:N
+    for s = 3:5
+        for d = 1:D
+            SU = all_SU{n};
+            S1 = all_S{all_index{n,4}};
+            S1.RewardAmount = convertreward(S1.RewardAmount);
+            
+            %high rewards
+            trials = find(S1.RewardAmount==s & S1.Block==d & S1.hits==1); %
+            trialNum(n,s-2,d) = length(trials);
+
+            %low rewards
+            if d == 1
+                trials2 = find(S1.RewardAmount==s-2 & S1.Block==d & S1.hits==1); %rewarded trials only
+            else
+                trials2 = find(S1.RewardAmount==s-2 & S1.Block==d+1 & S1.hits==1); %rewarded trials only
+            end
+            trialNumlow(n,s-2,d) = length(trials2);
+
+        end
+    end
+end
+
+
+%% ensure all hmats have the same number of times
+for i = 1:length(all_SU)
+SU = all_SU{i};
+time(i) = length(SU.xvec.CON);
+end
+if length(unique(time))>1
+for i = 1:length(cells)
+    bins = 0.05;
+    win = [-4 4];
+    all_SU(i) = makeHeatmat(all_SU(i),all_S{all_index{i,4}},all_S{all_index{i,4}}.behEvents,win,bins);
+end
+end
+
+%% set data up for dPCA
+N = length(cells);
+S = 3; %rewards
+D = 2; %blocks
+T = all_SU{1}.xvec.CON; %time
+maxTrialNum = max(trialNum,[],'all');
+maxTrialNumlow = max(trialNumlow,[],'all');
+
+alignto = {'COFF', 'SON','SOFF','Rew','Opt','CON'};
+for k = 1:length(alignto)
+%firingRates: N x S x D x T x maxTrialNum
+FR.(alignto{k}) = nan(N,S,D,length(T),maxTrialNum);
+FRLow.(alignto{k}) = nan(N,S,D,length(T),maxTrialNumlow);
+end
+
+for n = 1:N
+    for s = 3:5
+        for d = 1:D
+            SU = all_SU{n};
+            S1 = all_S{all_index{n,4}};
+            S1.RewardAmount = convertreward(S1.RewardAmount);
+
+            %high reward and high/mix blocks
+            trials = find(S1.RewardAmount==s & S1.Block==d & S1.hits==1); %rewarded trials only
+            for k = 1:length(alignto)
+            a = SU.hmat.(alignto{k})(trials,:);
+            a(isnan(a)) = 0;
+            FR.(alignto{k})(n,s-2,d,:,1:length(trials)) = a';
+            end
+
+            %low reawrds and low/mix blocks
+            if d == 1
+            trials2 = find(S1.RewardAmount==s-2 & S1.Block==d & S1.hits==1); %rewarded trials only
+            else
+            trials2 = find(S1.RewardAmount==s-2 & S1.Block==d+1 & S1.hits==1); %rewarded trials only
+            end
+            for k = 1:length(alignto)
+            b = SU.hmat.(alignto{k})(trials2,:);
+            b(isnan(b)) = 0;
+            FRLow.(alignto{k})(n,s-2,d,:,1:length(trials2))=b';
+            end 
+         end
+    end
+end
+
+%compute PSTH
+for k = 1:length(alignto)
+    FRavg.(alignto{k}) = mean(FR.(alignto{k}),5,'omitnan');
+    FRLowavg.(alignto{k}) = mean(FRLow.(alignto{k}),5,'omitnan');
+end
+figure('color','white')
+for k = 1:length(alignto)
+    subplot(1,length(alignto),k)
+plot(T,squeeze(FRavg.(alignto{k})(randi([1 N],10,1),1,1,:))')
+title(alignto{k})
+end
+
+time = all_SU{1}.xvec.CON;
+
+%% dPCA
+firingRates_new = FR.COFF;
+trialsvec = trialNum;
+[W,V] = dPCA_MD(firingRates_new,time,trialsvec,'OFC_Rew_low_weights','OFC_Rew_low_weights_regular');
+
+%% check out the weights 
+DLS_weights = W(DLS,:);
+VS_weights = W(VS,:);
+[a,i] = max(abs(DLS_weights),[],2);
+[av,iv] = max(abs(VS_weights),[],2);
+figure('color','white')
+subplot(121)
+histogram(i)
+title('DS');xlabel('Components'),ylabel('number of neurons');box off; set(gca,'TickDir','out');yticks(1:100)
+subplot(122)
+histogram(iv,'FaceColor','r')
+title('VS');xlabel('Components'),ylabel('number of neurons');box off; set(gca,'TickDir','out');yticks(1:100)

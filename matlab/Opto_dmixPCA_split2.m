@@ -1,0 +1,153 @@
+%% Load ETable
+load('\\constantinoplelab.cns.nyu.edu\server2\PhysiologyData\EphysTable.mat');
+
+%% Find sessions
+% Opto fiber in DS, control first session, opto second session
+Opto2 = find(strcmp(ETable.fiber_site,'DLS') & ETable.session_num==2 & ETable.stimulation ==1 & string(ETable.recording_site)=='OFC' & contains(string(ETable.matfile),'mat'));
+Control1 = find(contains(string(ETable.sessiondate),string(ETable.sessiondate(Opto2))) & ETable.session_num==1 & ETable.stimulation==0 & string(ETable.recording_site)=='OFC' & contains(string(ETable.matfile),'mat'));
+
+
+%% Decide which comparison to do
+Comp = 'l'; %l = low/mix
+            %h = high/mix
+
+%% Initialize
+alignto = {'CON','COFF','SON','SOFF','Rew','Opt'};
+
+all_Sco = {};
+all_SUco = {};
+all_indexco = [];
+
+all_Soo = {};
+all_SUoo = {};
+all_indexoo = [];
+
+counter = 1;
+Snum = 1;
+
+%% Compare control and opto session so they have
+% 1. either high/mix or low/mix
+% 2. at least 2 trials of each volume for
+
+for i = 1:length(Control1)
+    %load the same date sessions
+    if ETable.sessiondate(Opto2(i))==ETable.sessiondate(Control1(i)) && strcmp(ETable.ratname{Opto2(i)},ETable.ratname{Control1(i)})
+        OptoS = load(fullfile(ETable.savepath{Opto2(i)},ETable.matfile{Opto2(i)}));
+        ControlS = load(fullfile(ETable.savepath{Control1(i)},ETable.matfile{Control1(i)}));
+
+        if ~isempty(OptoS.SU) && ~isempty(ControlS.SU)
+            Sco = ControlS.S; %S struct for control session
+            Soo = OptoS.S;    %S struct for opto session
+
+            %identify if there are two trials per reward for each reward
+            %volume
+
+            if Comp=='l'
+                Sco_RewardAmount = convertreward(Sco.RewardAmount);
+                Soo_RewardAmount = convertreward(Soo.RewardAmount);
+                for r = 1:3
+                    Sco_mix(r) = length(find(Sco.Block==1 & Sco_RewardAmount==r & Sco.hits==1));
+                    Sco_test(r) = length(find(Sco.Block==3 & Sco_RewardAmount==r & Sco.hits==1));
+                    Soo_mix(r) = length(find(Soo.Block==1 & Soo_RewardAmount==r & Soo.hits==1));
+                    Soo_test(r) = length(find(Soo.Block==3 & Soo_RewardAmount==r & Soo.hits==1));
+                end
+            else
+                Sco_RewardAmount = convertreward(Sco.RewardAmount);
+                Soo_RewardAmount = convertreward(Soo.RewardAmount);
+                for r = 3:5
+                    Sco_mix(r-2) = length(find(Sco.Block==1 & Sco_RewardAmount==r & Sco.hits==1));
+                    Sco_test(r-2) = length(find(Sco.Block==2 & Sco_RewardAmount==r & Sco.hits==1));
+                    Soo_mix(r-2) = length(find(Soo.Block==1 & Soo_RewardAmount==r & Soo.hits==1));
+                    Soo_test(r-2) = length(find(Soo.Block==2 & Soo_RewardAmount==r & Soo.hits==1));
+                end
+            end
+
+            % if both mix/test blocks have 2 of each volume in control/opto sessions
+            if sum(Sco_mix>1)==3 && sum(Soo_mix>1)==3 && sum(Sco_test>1)==3 && sum(Soo_test>1)==3
+
+                all_Sco= [all_Sco,Sco];
+                all_SUco = [all_SUco,ControlS.SU];
+                all_Soo= [all_Soo,Soo];
+                all_SUoo = [all_SUoo,OptoS.SU];
+
+                for cluster = 1:length(ControlS.SU)
+
+                    %control only
+                    all_indexco{counter,1} = Sco.RatName;
+                    all_indexco{counter,2} = string(datetime(Sco.SessionDate,'Format','yyyy-MM-dd'));
+                    all_indexco{counter,3} = ControlS.SU{cluster}.cluster_id;
+                    all_indexco{counter,4} = Snum;
+                    all_indexco{counter,5} = counter;
+
+                    %opto only
+                    all_indexoo{counter,1} = Soo.RatName;
+                    all_indexoo{counter,2} = string(datetime(Soo.SessionDate,'Format','yyyy-MM-dd'));
+                    all_indexoo{counter,3} = OptoS.SU{cluster}.cluster_id;
+                    all_indexoo{counter,4} = Snum;
+                    all_indexoo{counter,5} = counter;
+
+                    counter = counter+1;
+                end
+                Snum=Snum+1;
+            end
+        end
+    end
+end
+
+%% Reduce structs to only OFC cells
+[cells,~] = OnTarget(all_SUco,all_Sco,all_indexco,'OFC');
+[all_SUco,all_Sco,all_indexco] = reduce_index(all_indexco,all_Sco, all_SUco, cells);
+[all_SUoo,all_Soo,all_indexoo] = reduce_index(all_indexoo,all_Soo, all_SUoo, cells);
+
+
+%% calculate max trials
+[trialNumco]=calcMaxTrials(all_SUco,all_Sco,all_indexco,[all_indexco{:,5}],Comp);
+[trialNumoo]=calcMaxTrials(all_SUoo,all_Soo,all_indexoo,[all_indexco{:,5}],Comp);
+
+
+%% ensure all hmats have the same number of times
+for i = 1:length(all_SUco)
+SU = all_SUco{i};
+time(i) = length(SU.xvec.CON);
+end
+if length(unique(time))>1
+for i = 1:length([all_indexco{:,5}])
+    bins = 0.05;
+    win = [-4 4];
+    all_SUco(i) = makeHeatmat(all_SUco(i),all_Sco{all_indexco{i,4}},all_Sco{all_indexco{i,4}}.behEvents,win,bins);
+    all_SUoo(i) = makeHeatmat(all_SUoo(i),all_Soo{all_indexoo{i,4}},all_Soo{all_indexoo{i,4}}.behEvents,win,bins);
+end
+end
+
+
+%% set data up for dPCA
+[FR,time] = dpca_setup(all_SUco,all_Sco,all_indexco,[all_indexco{:,5}],trialNumco,Comp);
+[FRo,timeo] = dpca_setup(all_SUoo,all_Soo,all_indexoo,[all_indexco{:,5}],trialNumoo,Comp);
+
+%% dPCA
+event = 'Rew';
+firingRates_new = FR.(event);
+firingRates_opto = FRo.(event);
+trialsvec = trialNumco;
+trialsveco = trialNumoo;
+
+if Comp=='l'
+    c = 'mix-low';
+else
+    c = 'mix-high';
+end
+    weight1 = ['OFC-opto_',event,'_',c,'weights'];
+    weight2 = ['OFC-opto_',event,'_',c,'weights_regular'];
+
+
+
+[W,V] = dPCA_MD(firingRates_new,time,trialsvec,...
+    weight1,weight2,...
+    firingRates_opto,trialsveco);
+
+
+
+
+
+
+

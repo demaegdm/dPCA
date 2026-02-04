@@ -1,4 +1,4 @@
-function dpca_plot_default(data, time, yspan, explVar, compNum, events, signif, marg)
+function dpca_plot_default(data, time, yspan, explVar, compNum, events, signif, marg,vcolors)
 
 % Modify this function to adjust how components are plotted.
 %
@@ -11,6 +11,19 @@ function dpca_plot_default(data, time, yspan, explVar, compNum, events, signif, 
 %   events    - time events to be marked on the time axis
 %   signif    - marks time-point where component is significant
 %   marg      - marginalization number
+
+if nargin<9
+        % vcolors = [ 0 .4 0; 1 .65 0; 1 0 0]; %need to play with colors to be color blind friendly
+        vcolors = [0.4 .8 0.4; 1 .8 .5; 1 0.5 0.5]; %need to play with colors to be color blind friendly
+
+end
+
+%vcolors = [0 .4 0; 1 .65 0; 1 0 0]; %need to play with colors to be color blind friendly
+%vcolors = [0.4 .8 0.4; 1 .8 .5; 1 0.5 0.5]; %need to play with colors to be color blind friendly
+
+% bcolors = {'k','r','b'};
+% optoVcolor = [.6 .2 .9; .1 .5 .9; 0 .4 0; 1 .65 0; 1 0 0]; %need to play with colors to be color blind friendly
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -42,17 +55,17 @@ if strcmp(data, 'legend')
     % values)
     elseif length(time) == 4 && time(3) == 2
         numOfStimuli = time(2); % time is used to pass size(data) for legend
-        colors = lines(numOfStimuli);
+        colors = vcolors(1:numOfStimuli,:);
         hold on
         
         for f = 1:numOfStimuli
             plot([0.5 1], [f f], 'color', colors(f,:), 'LineWidth', 2)
-            text(1.2, f, ['Stimulus ' num2str(f)])
+            text(1.2, f, ['Vol ' num2str(f)])
         end
         plot([0.5 1], [-2 -2], 'k', 'LineWidth', 2)
         plot([0.5 1], [-3 -3], 'k--', 'LineWidth', 2)
-        text(1.2, -2, 'Decision 1')
-        text(1.2, -3, 'Decision 2')
+        text(1.2, -2, 'Mix block')
+        text(1.2, -3, 'Adaptation block')
         
         axis([0 3 -4.5 1.5+numOfStimuli])
         set(gca, 'XTick', [])
@@ -106,11 +119,19 @@ elseif ndims(data) == 4 && size(data,3)==2
     % different stimuli in different colours and binary condition as
     % solid/dashed
     numOfStimuli = size(data, 2);
-    colors = lines(numOfStimuli);
+    % colors = lines(numOfStimuli);
+    colors = vcolors(1:numOfStimuli,:);
 
     for f=1:numOfStimuli 
-        plot(time, squeeze(data(1, f, 1, :)), 'color', colors(f,:), 'LineWidth', 2)
-        plot(time, squeeze(data(1, f, 2, :)), '--', 'color', colors(f,:), 'LineWidth', 2)
+        % subplot(3,1,f); hold on
+        PSTH = squeeze(data(1, f, 1, :));
+        smooth_PSTH = PSTH;
+        %smooth_PSTH = movmean(PSTH,5);
+        plot(time, smooth_PSTH, 'color', colors(f,:), 'LineWidth', 2)
+        PSTH = squeeze(data(1, f, 2, :));
+        smooth_PSTH = PSTH;
+        %smooth_PSTH = movmean(PSTH,5);
+        plot(time, smooth_PSTH, '-.', 'color', colors(f,:), 'LineWidth', 2)
     end
 
 else
@@ -124,3 +145,5 @@ else
     
     plot(time, data, 'LineWidth', 2)    
 end
+box off
+set(gca,'TickDir','out')

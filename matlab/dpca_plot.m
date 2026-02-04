@@ -80,8 +80,12 @@ end
 numCompToShow = min(options.numCompToShow, size(W,2));
 
 X = Xfull(:,:)';
+% Xcen = bsxfun(@minus, X, mean(X,'omitnan'));
+% XfullCen = bsxfun(@minus, Xfull, mean(X,'omitnan')');
+
 Xcen = bsxfun(@minus, X, mean(X));
 XfullCen = bsxfun(@minus, Xfull, mean(X)');
+
 N = size(X, 1);
 dataDim = size(Xfull);
 Z = Xcen * W;
@@ -161,7 +165,7 @@ if ~isempty(options.X_extra)
     Zfull = reshape(ZF(:,componentsToPlot)', [length(componentsToPlot) dataDimFull(2:end)]);
 end
 
-myFig = figure('Position', [0 0 1800 1000]);
+myFig = figure('Position', [0 0 1800 1000],'color','w');
 
 % y-axis spans
 if isempty(options.ylims)
@@ -175,8 +179,8 @@ end
 
 % plotting all components as subplots
 for c = 1:length(componentsToPlot)
-    cc = componentsToPlot(c);
     subplot(4, 4, subplots(c))
+    cc = componentsToPlot(c);
     
     if ~isempty(options.componentsSignif)
         signifTrace = options.componentsSignif(cc,:);
@@ -236,10 +240,15 @@ end
 if isempty(options.marginalizationColours)
     if ~isempty(options.explainedVar)
         L = length(options.explainedVar.totalMarginalizedVar);
-        options.marginalizationColours = lines(L);
+        %vcolors = [0.4 .8 0.4; 1 .8 .5; 1 0.5 0.5]; %need to play with colors to be color blind friendly
+         vcolors = [.6 .2 .9; .1 .5 .9; 0 .4 0; 1 .65 0; 1 0 0];
+        options.marginalizationColours = vcolors(1:L,:);
+        % options.marginalizationColours = lines(L);
     elseif ~isempty(options.whichMarg)
         L = length(unique(options.whichMarg));
-        options.marginalizationColours = lines(L);
+        %vcolors = [0.4 .8 0.4; 1 .8 .5; 1 0.5 0.5]; %need to play with colors to be color blind friendly
+         vcolors = [.6 .2 .9; .1 .5 .9; 0 .4 0; 1 .65 0; 1 0 0];
+        options.marginalizationColours = vcolors(1:L,:);
     else
         options.marginalizationColours = [];
     end

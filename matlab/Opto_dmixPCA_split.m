@@ -1,0 +1,272 @@
+%% Load ETable
+load('\\constantinoplelab.cns.nyu.edu\server2\PhysiologyData\EphysTable.mat');
+
+%% Find sessions
+% Opto fiber in DS, control first session, opto second session
+Opto2 = find(strcmp(ETable.fiber_site,'DLS') & ETable.session_num==2 & ETable.stimulation ==1 & string(ETable.recording_site)=='OFC' & contains(string(ETable.matfile),'mat'));
+Control1 = find(contains(string(ETable.sessiondate),string(ETable.sessiondate(Opto2))) & ETable.session_num==1 & ETable.stimulation==0 & string(ETable.recording_site)=='OFC' & contains(string(ETable.matfile),'mat'));
+
+
+%% Initialize variables
+alignto = {'CON','COFF','SON','SOFF','Rew','Opt'};
+
+all_S_H= {};
+all_SU_H = {};
+all_Sco_H= {};
+all_SUco_H = {};
+all_Soo_H= {};
+all_SUoo_H = {};
+all_index_H = [];
+
+all_S_L= {};
+all_SU_L = {};
+all_Sco_L= {};
+all_SUco_L = {};
+all_Soo_L = {};
+all_SUoo_L = {};
+all_index_L = [];
+
+
+counterL = 1;
+counterH = 1;
+SnumL = 1;
+SnumH = 1;
+
+
+%% Split sessions by high/mix or low/mix
+for i = 1:length(Opto2)
+    Sc = [];
+    SUc = [];
+
+    Sco = [];
+    SUco = [];
+
+    Soo = [];
+    SUoo = [];
+
+    if ETable.sessiondate(Opto2(i))==ETable.sessiondate(Control1(i)) && strcmp(ETable.ratname{Opto2(i)},ETable.ratname{Control1(i)})
+        OptoS = load(fullfile(ETable.savepath{Opto2(i)},ETable.matfile{Opto2(i)}));
+        ControlS = load(fullfile(ETable.savepath{Control1(i)},ETable.matfile{Control1(i)}));
+        if isempty(OptoS.SU) && isempty(ControlS.SU)
+        else
+            Sc = ControlS.S;
+            Sco = ControlS.S;
+            Soo = OptoS.S;
+
+            % identify which blocks exist
+            ScBlock = [sum(Sc.Block==1);sum(Sc.Block==2);sum(Sc.Block==3)];
+            SooBlock = [sum(Soo.Block==1);sum(Soo.Block==2);sum(Soo.Block==3)];
+
+            FieldNames_S = {'NoseInCenter', 'TrainingStage', 'Block', 'BlockLengthAd',...
+                'BlockLengthTest', 'ProbCatch', 'RewardDelay', 'RewardAmount', 'IsOpto',...
+                'OptoEvent', 'hits', 'ReactionTime', 'vios',  'optout', 'WaitForPoke',...
+                'wait_time', 'iti', 'Cled', 'Lled', 'l_opt', 'Rled', 'r_opt','SessId'};
+            for j = 1:length(FieldNames_S)
+                Sc.(FieldNames_S{j}) = [];
+                try
+                    Sc.(FieldNames_S{j}) = [ControlS.S.(FieldNames_S{j});OptoS.S.(FieldNames_S{j})];
+                catch
+                    Sc.(FieldNames_S{j}) = [ControlS.S.(FieldNames_S{j}),OptoS.S.(FieldNames_S{j})];
+                end
+            end
+            Sc.RewardedSide = [ControlS.S.RewardedSide,OptoS.S.RewardedSide];
+            Sc.behEvents = [];
+            for j = 1:length(OptoS.SU)
+                SUc{j} = ControlS.SU{j};
+                SUco{j} = ControlS.SU{j};
+                SUoo{j} = OptoS.SU{j};
+
+                for k = 1:length(alignto)
+                    SUc{j}.hmat.(alignto{k}) = [];
+                    SUc{j}.hmat.(alignto{k}) = [ControlS.SU{j}.hmat.(alignto{k});OptoS.SU{j}.hmat.(alignto{k})];
+                end
+            end
+
+
+            %% separate?
+            if ScBlock(1)>39 && ScBlock(2)>39 && SooBlock(1)>39 && SooBlock(2)>39 %high/mix
+                % keyboard
+
+                %make a struct
+                all_S_H= [all_S_H,Sc];
+                all_SU_H = [all_SU_H,SUc];
+                all_Sco_H= [all_Sco_H,Sco];
+                all_SUco_H = [all_SUco_H,SUco];
+                all_Soo_H= [all_Soo_H,Soo];
+                all_SUoo_H = [all_SUoo_H,SUoo];
+
+                for cluster = 1:length(SUc)
+                    %combined control and opto
+                    all_index_H{counterH,1} = Sc.RatName;
+                    all_index_H{counterH,2} = string(datetime(Sc.SessionDate,'Format','yyyy-MM-dd'));
+                    all_index_H{counterH,3} = SUc{cluster}.cluster_id;
+                    all_index_H{counterH,4} = SnumH;
+                    all_index_H{counterH,5} = counterH;
+
+                    %control only
+                    all_indexco_H{counterH,1} = Sco.RatName;
+                    all_indexco_H{counterH,2} = string(datetime(Sco.SessionDate,'Format','yyyy-MM-dd'));
+                    all_indexco_H{counterH,3} = SUco{cluster}.cluster_id;
+                    all_indexco_H{counterH,4} = SnumH;
+                    all_indexco_H{counterH,5} = counterH;
+
+                    %opto only
+                    all_indexoo_H{counterH,1} = Soo.RatName;
+                    all_indexoo_H{counterH,2} = string(datetime(Soo.SessionDate,'Format','yyyy-MM-dd'));
+                    all_indexoo_H{counterH,3} = SUoo{cluster}.cluster_id;
+                    all_indexoo_H{counterH,4} = SnumH;
+                    all_indexoo_H{counterH,5} = counterH;
+
+                    counterH = counterH+1;
+                end
+
+            elseif ScBlock(1)>39 && ScBlock(3)>39 && SooBlock(1)>39 && SooBlock(3)>39 %low/ mix
+                % keyboard
+                %make a struct
+                all_S_L= [all_S_L,Sc];
+                all_SU_L = [all_SU_L,SUc];
+                all_Sco_L= [all_Sco_L,Sco];
+                all_SUco_L = [all_SUco_L,SUco];
+                all_Soo_L = [all_Soo_L,Soo];
+                all_SUoo_L = [all_SUoo_L,SUoo];
+
+                for cluster = 1:length(SUc)
+                    %combined control and opto
+                    all_index_L{counterL,1} = Sc.RatName;
+                    all_index_L{counterL,2} = string(datetime(Sc.SessionDate,'Format','yyyy-MM-dd'));
+                    all_index_L{counterL,3} = SUc{cluster}.cluster_id;
+                    all_index_L{counterL,4} = SnumL;
+                    all_index_L{counterL,5} = counterL;
+
+                    %control only
+                    all_indexco_L{counterL,1} = Sco.RatName;
+                    all_indexco_L{counterL,2} = string(datetime(Sco.SessionDate,'Format','yyyy-MM-dd'));
+                    all_indexco_L{counterL,3} = SUco{cluster}.cluster_id;
+                    all_indexco_L{counterL,4} = SnumL;
+                    all_indexco_L{counterL,5} = counterL;
+
+                    %opto only
+                    all_indexoo_L{counterL,1} = Soo.RatName;
+                    all_indexoo_L{counterL,2} = string(datetime(Soo.SessionDate,'Format','yyyy-MM-dd'));
+                    all_indexoo_L{counterL,3} = SUoo{cluster}.cluster_id;
+                    all_indexoo_L{counterL,4} = SnumL;
+                    all_indexoo_L{counterL,5} = counterL;
+
+                    counterL = counterL+1;
+                end
+            else
+            end
+
+            if ScBlock(1)>39 && ScBlock(2)>39 && SooBlock(1)>39 && SooBlock(2)>39 %high/mix
+                SnumH = SnumH+1;
+            elseif ScBlock(1)>39 && ScBlock(3)>39 && SooBlock(1)>39 && SooBlock(3)>39 %mix/low
+                SnumL = SnumL+1;
+            end
+        end
+    else
+        keyboard
+    end
+end
+
+
+%% reduce struct to only OFC neurons
+%and at least 2 trials of each reward volume
+
+% [all_SUco,all_Sco,all_indexco,cellsco] = reduce_struct(all_SUco,all_Sco,all_indexco,'OFC');
+%  %[all_SUco,all_Sco,all_indexco] = reduce_index(all_indexco,all_Sco,all_SUco,cellsoo);
+% [all_SUoo,all_Soo,all_indexoo,cellsoo] = reduce_struct(all_SUoo,all_Soo,all_indexoo,'OFC');
+
+%this might be a little redundant or a better way to have separated the
+%structs...
+[all_SUco_L,all_Sco_L,all_indexco_L,cellsco_L] = reduce_struct(all_SUco_L,all_Sco_L,all_indexco_L,'OFC','l');
+[all_SUco_H,all_Sco_H2,all_indexco_H,cellsco_H] = reduce_struct(all_SUco_H,all_Sco_H,all_indexco_H,'OFC','h');
+
+[all_SUoo_L,all_Soo_L,all_indexoo_L,cellsoo_L] = reduce_struct(all_SUoo_L,all_Soo_L,all_indexoo_L,'OFC','l');
+[all_SUoo_H,all_Soo_H,all_indexoo_H,cellsoo_H] = reduce_struct(all_SUoo_H,all_Soo_H,all_indexoo_H,'OFC','h');
+
+
+%% determine whether the control and experimental versions have the same sessions included. 
+
+
+%% calculate max trials]
+[trialNumco_L,trialNumlowco_L]=calcMaxTrials(all_SUco_L,all_Sco_L,all_indexco_L,cellsco_L);
+[~,trialNumlowoo_L]=calcMaxTrials(all_SUoo_L,all_Soo_L,all_indexoo_L,cellsco_L);
+
+[trialNumco_H,~]=calcMaxTrials(all_SUco_H,all_Sco_H,all_indexco_H,cellsoo_H);
+[trialNumoo_H,~]=calcMaxTrials(all_SUoo_H,all_Soo_H,all_indexoo_H,cellsoo_H);
+
+%% ensure all hmats have the same number of times
+% for i = 1:length(all_SU)
+% SU = all_SU{i};
+% time(i) = length(SU.xvec.CON);
+% end
+% if length(unique(time))>1
+% for i = 1:length(cells)
+%     bins = 0.05;
+%     win = [-4 4];
+%     all_SU(i) = makeHeatmat(all_SU(i),all_S{all_index{i,4}},all_S{all_index{i,4}}.behEvents,win,bins);
+% end
+% end
+
+for i = 1:length(all_SUco_L)
+SU = all_SUco_L{i};
+time(i) = length(SU.xvec.CON);
+end
+if length(unique(time))>1
+for i = 1:length(cells)
+    bins = 0.05;
+    win = [-4 4];
+    all_SUco_L(i) = makeHeatmat(all_SU(i),all_S{all_index{i,4}},all_S{all_index{i,4}}.behEvents,win,bins);
+end
+end
+
+for i = 1:length(all_SUoo_L)
+SU = all_SUoo_L{i};
+time(i) = length(SU.xvec.CON);
+end
+if length(unique(time))>1
+for i = 1:length(cells)
+    bins = 0.05;
+    win = [-4 4];
+    all_SUoo_L(i) = makeHeatmat(all_SU(i),all_S{all_index{i,4}},all_S{all_index{i,4}}.behEvents,win,bins);
+end
+end
+
+
+for i = 1:length(all_SUco_H)
+SU = all_SUco_H{i};
+time(i) = length(SU.xvec.CON);
+end
+if length(unique(time))>1
+for i = 1:length(cells)
+    bins = 0.05;
+    win = [-4 4];
+    all_SUco_H(i) = makeHeatmat(all_SU(i),all_S{all_index{i,4}},all_S{all_index{i,4}}.behEvents,win,bins);
+end
+end
+
+for i = 1:length(all_SUoo_H)
+SU = all_SUoo_H{i};
+time(i) = length(SU.xvec.CON);
+end
+if length(unique(time))>1
+for i = 1:length(cells)
+    bins = 0.05;
+    win = [-4 4];
+    all_SUoo_H(i) = makeHeatmat(all_SU(i),all_S{all_index{i,4}},all_S{all_index{i,4}}.behEvents,win,bins);
+end
+end
+
+%% set data up for dPCA
+[FR,FRLow,time] = dpca_setup(all_SUco,all_Sco,all_indexco,cellsoo,trialNumco,trialNumlowco);
+[FRo,FRLowo,timeo] = dpca_setup(all_SUoo,all_Soo,all_indexoo,cellsoo,trialNumoo,trialNumlowoo);
+
+%% dPCA
+firingRates_new = FR.COFF;
+firingRates_opto = FRo.COFF;
+trialsvec = trialNumco;
+trialsveco = trialNumoo;
+[W,V] = dPCA_MD(firingRates_new,time,trialsvec,...
+    'OFC-opto_Rew_high_weights','OFC-opto_Rew_high_weights_regular',...
+    firingRates_opto,trialsveco);
+
