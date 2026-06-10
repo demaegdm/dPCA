@@ -1,4 +1,4 @@
-function dpca_plot(Xfull, W, V, plotFunction, varargin)
+function [PC] = dpca_plot(Xfull, W, V, plotFunction, varargin)
 
 % dpca_plot(X, W, V, plotFunction, ...) 
 % produces a plot of the dPCA results. X is the data matrix, W and V
@@ -121,6 +121,7 @@ if ~isempty(options.whichMarg) && ...
         else
             moreComponents = find(options.whichMarg == margRowSeq(i), 3);
         end
+        PC{i} = moreComponents;
         componentsToPlot = [componentsToPlot moreComponents];
         subplots = [subplots (i-1)*4+2:(i-1)*4+2 + length(moreComponents) - 1];
     end

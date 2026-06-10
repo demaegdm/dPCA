@@ -21,15 +21,21 @@ for n = 1:N
 
             %mix rewards
             trials = find(S1.RewardAmount==s & S1.Block==1 & S1.hits==1); %
-            trialNum(n,s,1) = length(trials);
 
-            %low rewards
+            %adapt rewards
             if Comp == 'l'
-                trials2 = find(S1.RewardAmount==s & S1.Block==3 & S1.hits==1); %low block rewarded trials only
-            else
-                trials2 = find(S1.RewardAmount==s & S1.Block==2 & S1.hits==1); %high block rewarded trials only
-            end
-            trialNum(n,s,2) = length(trials2);
+               trialNum(n,s,1) = length(trials);
 
+                trials2 = find(S1.RewardAmount==s & S1.Block==3 & S1.hits==1); %low block rewarded trials only
+                trialNum(n,s,2) = length(trials2);
+
+            else
+                trialNum(n,s-2,1) = length(trials);
+
+                trials2 = find(S1.RewardAmount==s & S1.Block==2 & S1.hits==1); %high block rewarded trials only
+                trialNum(n,s-2,2) = length(trials2);
+
+            end
+            
     end
 end

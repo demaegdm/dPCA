@@ -94,9 +94,9 @@ else
     title(['Component #' num2str(compNum)])
 end
 
-if ~isempty(events)
-    plot([events; events], yspan, 'Color', [0.6 0.6 0.6])
-end
+% if ~isempty(events)
+%     plot([events; events], yspan, 'Color', [0.6 0.6 0.6])
+% end
 
 if ~isempty(signif)
     signif(signif==0) = nan;
