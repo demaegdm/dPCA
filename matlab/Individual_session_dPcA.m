@@ -19,7 +19,10 @@ Control1 = find(contains(string(ETable.sessiondate),string(ETable.sessiondate(Op
     end
 
 %% Initialize
-
+all_Sco= [];
+all_SUco = [];
+all_Soo= [];
+all_SUoo = [];
 %% Compare control and opto session so they have
 % 1. either high/mix or low/mix
 % 2. at least 2 trials of each volume for
@@ -40,16 +43,16 @@ for i = 1:length(Opto2)
                 Sco_RewardAmount = convertreward(Sco.RewardAmount);
                 Soo_RewardAmount = convertreward(Soo.RewardAmount);
                 for r = 1:3
-                    Sco_mix(r) = length(find(Sco.Block==1 & Sco_RewardAmount==r & Sco.hits==1));
-                    Sco_test(r) = length(find(Sco.Block==3 & Sco_RewardAmount==r & Sco.hits==1));
-                    Soo_mix(r) = length(find(Soo.Block==1 & Soo_RewardAmount==r & Soo.hits==1));
-                    Soo_test(r) = length(find(Soo.Block==3 & Soo_RewardAmount==r & Soo.hits==1));
-
-                    % % remove opto trials from opto sessions
                     % Sco_mix(r) = length(find(Sco.Block==1 & Sco_RewardAmount==r & Sco.hits==1));
                     % Sco_test(r) = length(find(Sco.Block==3 & Sco_RewardAmount==r & Sco.hits==1));
-                    % Soo_mix(r) = length(find(Soo.Block==1 & Soo_RewardAmount==r & Soo.hits==1 & Soo.IsOpto==1));
-                    % Soo_test(r) = length(find(Soo.Block==3 & Soo_RewardAmount==r & Soo.hits==1 & Soo.IsOpto==1));
+                    % Soo_mix(r) = length(find(Soo.Block==1 & Soo_RewardAmount==r & Soo.hits==1));
+                    % Soo_test(r) = length(find(Soo.Block==3 & Soo_RewardAmount==r & Soo.hits==1));
+
+                    % remove opto trials from opto sessions
+                    Sco_mix(r) = length(find(Sco.Block==1 & Sco_RewardAmount==r & Sco.hits==1));
+                    Sco_test(r) = length(find(Sco.Block==3 & Sco_RewardAmount==r & Sco.hits==1));
+                    Soo_mix(r) = length(find(Soo.Block==1 & Soo_RewardAmount==r & Soo.hits==1 & Soo.IsOpto==1));
+                    Soo_test(r) = length(find(Soo.Block==3 & Soo_RewardAmount==r & Soo.hits==1 & Soo.IsOpto==1));
                 end
             else
                 Sco_RewardAmount = convertreward(Sco.RewardAmount);

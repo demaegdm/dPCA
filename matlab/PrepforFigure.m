@@ -17,9 +17,9 @@ save(fullfile('\\constantinoplelab.cns.nyu.edu\server2\PhysiologyData\Maggie\Chr
 %extended data table
 time  = -1:0.05:3;
 T = table(time', pv_block','VariableNames',{'Time','p value'});
-writetable(T,'Z:\Maggie\Papers\Physiology\Extended_data_tables\dpca_high-mix_block_pvalues.xlsx')
+writetable(T,'Z:\Maggie\Papers\Physiology\Extended_data_tables\dpca_high-mix_block_pvalues_nonopto.xlsx')
 T = table(time', pv_reward','VariableNames',{'Time','p value'});
-writetable(T,'Z:\Maggie\Papers\Physiology\Extended_data_tables\dpca_high-mix_reward_pvalues.xlsx')
+writetable(T,'Z:\Maggie\Papers\Physiology\Extended_data_tables\dpca_high-mix_reward_pvalues_nonopto.xlsx')
 
 
 
@@ -40,6 +40,6 @@ save(fullfile('\\constantinoplelab.cns.nyu.edu\server2\PhysiologyData\Maggie\Chr
 %extended data table
 time  = -1:0.05:3;
 T = table(time', pv_block','VariableNames',{'Time','p value'});
-writetable(T,'Z:\Maggie\Papers\Physiology\Extended_data_tables\dpca_low-mix_block_pvalues.xlsx')
+writetable(T,'Z:\Maggie\Papers\Physiology\Extended_data_tables\dpca_low-mix_block_pvalues_nonopto.xlsx')
 T = table(time', pv_reward','VariableNames',{'Time','p value'});
-writetable(T,'Z:\Maggie\Papers\Physiology\Extended_data_tables\dpca_low-mix_reward_pvalues.xlsx')
+writetable(T,'Z:\Maggie\Papers\Physiology\Extended_data_tables\dpca_low-mix_reward_pvalues_nonopto.xlsx')
