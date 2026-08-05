@@ -1,6 +1,6 @@
 function [D_PSTH_block_avg,D_PSTH_block_opto_avg,D_PSTH_Rew_avg, ...
     D_PSTH_Rew_opto_avg, sig_block, ...
-    sig_rew,pv_block,pv_rew] = AverageSessiondPCA(Comp, varargin)
+    sig_rew,pv_block,pv_rew] = AverageSessiondPCA(Comp,event, varargin)
 
 %averages the top Block/Reward PC for each session
 %adapt - mix block for each session
@@ -41,7 +41,7 @@ for i = 1:length(N(:,1))
 load(fullfile(F,N{i}),'FR','FRo','PC','W','time')
 
 %find top block/reward component number
-event = 'Rew';
+% event = 'COFF';
 % firingRates_new = FR.(event);
 % firingRates_opto = FRo.(event);
 % trialsvec = trialNumco;

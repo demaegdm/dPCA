@@ -6,13 +6,18 @@ load('\\constantinoplelab.cns.nyu.edu\server2\PhysiologyData\EphysTable.mat');
 Opto2 = find(strcmp(ETable.fiber_site,'DLS') & ETable.session_num==2 & ETable.stimulation ==1 & string(ETable.recording_site)=='OFC' & contains(string(ETable.matfile),'mat'));
 Control1 = find(contains(string(ETable.sessiondate),string(ETable.sessiondate(Opto2))) & ETable.session_num==1 & ETable.stimulation==0 & string(ETable.recording_site)=='OFC' & contains(string(ETable.matfile),'mat'));
 
-
 %% Decide which comparison to do
-Comp = 'l'; %l = low/mix
+Comp = 'h'; %l = low/mix
             %h = high/mix
 
+    if Comp=='l'
+        c = 'mix-low';
+    else
+        c = 'mix-high';
+    end
+
 %% Initialize
-alignto = {'CON','COFF','SON','SOFF','Rew','Opt'};
+alignto = {'CON','COFF','SON','SOFF','Rew'};
 
 all_Sco = {};
 all_SUco = {};
@@ -28,8 +33,7 @@ Snum = 1;
 %% Compare control and opto session so they have
 % 1. either high/mix or low/mix
 % 2. at least 2 trials of each volume for
-
-for i = 1:length(Control1)
+for i = 1:length(Opto2)
     %load the same date sessions
     if ETable.sessiondate(Opto2(i))==ETable.sessiondate(Control1(i)) && strcmp(ETable.ratname{Opto2(i)},ETable.ratname{Control1(i)})
         OptoS = load(fullfile(ETable.savepath{Opto2(i)},ETable.matfile{Opto2(i)}));
@@ -50,6 +54,12 @@ for i = 1:length(Control1)
                     Sco_test(r) = length(find(Sco.Block==3 & Sco_RewardAmount==r & Sco.hits==1));
                     Soo_mix(r) = length(find(Soo.Block==1 & Soo_RewardAmount==r & Soo.hits==1));
                     Soo_test(r) = length(find(Soo.Block==3 & Soo_RewardAmount==r & Soo.hits==1));
+
+                    % % remove opto trials from opto sessions
+                    % Sco_mix(r) = length(find(Sco.Block==1 & Sco_RewardAmount==r & Sco.hits==1));
+                    % Sco_test(r) = length(find(Sco.Block==3 & Sco_RewardAmount==r & Sco.hits==1));
+                    % Soo_mix(r) = length(find(Soo.Block==1 & Soo_RewardAmount==r & Soo.hits==1 & Soo.IsOpto==1));
+                    % Soo_test(r) = length(find(Soo.Block==3 & Soo_RewardAmount==r & Soo.hits==1 & Soo.IsOpto==1));
                 end
             else
                 Sco_RewardAmount = convertreward(Sco.RewardAmount);
@@ -59,6 +69,11 @@ for i = 1:length(Control1)
                     Sco_test(r-2) = length(find(Sco.Block==2 & Sco_RewardAmount==r & Sco.hits==1));
                     Soo_mix(r-2) = length(find(Soo.Block==1 & Soo_RewardAmount==r & Soo.hits==1));
                     Soo_test(r-2) = length(find(Soo.Block==2 & Soo_RewardAmount==r & Soo.hits==1));
+                    % 
+                    % Sco_mix(r-2) = length(find(Sco.Block==1 & Sco_RewardAmount==r & Sco.hits==1));
+                    % Sco_test(r-2) = length(find(Sco.Block==2 & Sco_RewardAmount==r & Sco.hits==1));
+                    % Soo_mix(r-2) = length(find(Soo.Block==1 & Soo_RewardAmount==r & Soo.hits==1 & Soo.IsOpto==1));
+                    % Soo_test(r-2) = length(find(Soo.Block==2 & Soo_RewardAmount==r & Soo.hits==1 & Soo.IsOpto==1));
                 end
             end
 
@@ -106,48 +121,120 @@ end
 
 
 %% ensure all hmats have the same number of times
-for i = 1:length(all_SUco)
-SU = all_SUco{i};
-time(i) = length(SU.xvec.CON);
-end
-if length(unique(time))>1
+% for i = 1:length(all_SUco)
+% SU = all_SUco{i};
+% time(i) = length(SU.xvec.CON);
+% end
+% if length(unique(time))>1
 for i = 1:length([all_indexco{:,5}])
     bins = 0.05;
-    win = [-4 4];
+    win = [-1 3];
     all_SUco(i) = makeHeatmat(all_SUco(i),all_Sco{all_indexco{i,4}},all_Sco{all_indexco{i,4}}.behEvents,win,bins);
     all_SUoo(i) = makeHeatmat(all_SUoo(i),all_Soo{all_indexoo{i,4}},all_Soo{all_indexoo{i,4}}.behEvents,win,bins);
 end
-end
+% end
 
 
 %% set data up for dPCA
 [FR,time] = dpca_setup(all_SUco,all_Sco,all_indexco,[all_indexco{:,5}],trialNumco,Comp);
 [FRo,timeo] = dpca_setup(all_SUoo,all_Soo,all_indexoo,[all_indexco{:,5}],trialNumoo,Comp);
 
+
 %% dPCA
-event = 'Rew';
+for k = 1:length(alignto)
+event = alignto{k};
 firingRates_new = FR.(event);
 firingRates_opto = FRo.(event);
 trialsvec = trialNumco;
 trialsveco = trialNumoo;
 
-if Comp=='l'
-    c = 'mix-low';
-else
-    c = 'mix-high';
-end
+%naming
     weight1 = ['OFC-opto_',event,'_',c,'weights'];
     weight2 = ['OFC-opto_',event,'_',c,'weights_regular'];
 
-
-
-[W,V] = dPCA_MD(firingRates_new,time,trialsvec,...
+[W.(event),V.(event)] = dPCA_MD(firingRates_new,time,trialsvec,...
     weight1,weight2,...
     firingRates_opto,trialsveco);
+end
 
 
+% savename = ['OFC-opto_',c,'onlyOptotrials'];
+% % savename = ['OFC-opto_',c,'removeOptotrials'];
+% savename = ['OFC-opto_',c];
+% save(['C:\Users\mld9131\Documents\GitHub\dPCA\matlab\' savename '.mat'],...
+%     'FR','FRo','time','timeo','trialNumco','trialNumoo',...
+%     'all_indexco','all_indexoo','all_Sco','all_Soo','all_SUco','all_SUoo','cells','Comp',...
+%       'W','V',...
+%     '-v7.3');
 
-
-
-
-
+% %%
+ %% individual sessions
+% % all_Sco_original = all_Sco;
+% % all_Soo_original = all_Soo;
+% % 
+% % all_SUco_original = all_SUco;
+% % all_SUoo_original = all_SUoo;
+% % 
+% % all_indexco_original = all_indexco;
+% % all_indexoo_original = all_indexoo;
+% 
+% 
+% % select one session at a time
+% for i = 1:length(all_Sco_original)
+%     cells =[all_indexco_original{[all_indexco_original{:,4}]==i,5}]';
+% 
+%     [all_SUco,all_Sco,all_indexco] = reduce_index(all_indexco_original,all_Sco_original, all_SUco_original, cells);
+%     [all_SUoo,all_Soo,all_indexoo] = reduce_index(all_indexoo_original,all_Soo_original, all_SUoo_original, cells);
+% 
+%     for j = 1:length([all_indexco{:,5}])
+%     bins = 0.05;
+%     win = [-1 3];
+%     all_SUco(j) = makeHeatmat(all_SUco(j),all_Sco{all_indexco{j,4}},all_Sco{all_indexco{j,4}}.behEvents,win,bins);
+%     all_SUoo(j) = makeHeatmat(all_SUoo(j),all_Soo{all_indexoo{j,4}},all_Soo{all_indexoo{j,4}}.behEvents,win,bins);
+%     end
+% 
+%     [trialNumco]=calcMaxTrials(all_SUco,all_Sco,all_indexco,[all_indexco{:,5}],Comp);
+%     [trialNumoo]=calcMaxTrials(all_SUoo,all_Soo,all_indexoo,[all_indexco{:,5}],Comp);
+% 
+%     [FR,time] = dpca_setup(all_SUco,all_Sco,all_indexco,[all_indexco{:,5}],trialNumco,Comp);
+%     [FRo,timeo] = dpca_setup(all_SUoo,all_Soo,all_indexoo,[all_indexco{:,5}],trialNumoo,Comp);
+% 
+%     event = 'Rew';
+%     firingRates_new = FR.(event);
+%     firingRates_opto = FRo.(event);
+%     trialsvec = trialNumco;
+%     trialsveco = trialNumoo;
+% 
+%     %naming
+%         weight1 = ['OFC-opto_',event,'_',c,'weights'];
+%         weight2 = ['OFC-opto_',event,'_',c,'weights_regular'];
+% 
+% 
+%     [W,V] = dPCA_MD(firingRates_new,time,trialsvec,...
+%         weight1,weight2,...
+%         firingRates_opto,trialsveco);
+% 
+% 
+%     figurename = [all_Sco{1}.RatName,'_',all_Sco{1}.SessionDate];
+%     if Comp=='l'
+%         F = 'Low-mix';
+%     else
+%         F = 'High-mix';
+%     end
+% 
+% 
+%     save(fullfile('Y:\Maggie\Chronic_implant\Npxl\Optotagged_cells\figures\dPCA\',F,'\Data',[figurename,'.mat']),...
+%         'FR','FRo','time','timeo','trialNumco','trialNumoo',...
+%          'all_indexco','all_indexoo','all_Sco','all_Soo','all_SUco','all_SUoo','cells','Comp',...
+%          'W','V',...
+%          '-v7.3');
+% 
+%     % sgtitle(['OptoSession_',all_Sco{1}.SessionDate])
+%     % savefig(fullfile('Y:\Maggie\Chronic_implant\Npxl\Optotagged_cells\figures\dPCA',F,[figurename,'_opto']))
+%     % close
+%     % sgtitle(['ControlSession_',all_Sco{1}.SessionDate])
+%     % savefig(fullfile('Y:\Maggie\Chronic_implant\Npxl\Optotagged_cells\figures\dPCA',F,[figurename,'_control']))
+%     % close
+% end
+% 
+% 

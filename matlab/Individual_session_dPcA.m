@@ -1,4 +1,4 @@
-function Individual_session_dPcA(Comp)
+function Individual_session_dPcA(Comp,event)
 
 %% Load ETable
 load('\\constantinoplelab.cns.nyu.edu\server2\PhysiologyData\EphysTable.mat');
@@ -19,10 +19,13 @@ Control1 = find(contains(string(ETable.sessiondate),string(ETable.sessiondate(Op
     end
 
 %% Initialize
-all_Sco= [];
-all_SUco = [];
-all_Soo= [];
-all_SUoo = [];
+all_Sco= {};
+all_SUco = {};
+all_Soo= {};
+all_SUoo = {};
+counter = 1;
+Snum = 1;
+
 %% Compare control and opto session so they have
 % 1. either high/mix or low/mix
 % 2. at least 2 trials of each volume for
@@ -139,7 +142,7 @@ for i = 1:length(all_Sco_original)
     [FR,time] = dpca_setup(all_SUco,all_Sco,all_indexco,[all_indexco{:,5}],trialNumco,Comp);
     [FRo,timeo] = dpca_setup(all_SUoo,all_Soo,all_indexoo,[all_indexco{:,5}],trialNumoo,Comp);
 
-    event = 'Rew';
+    % event = 'COFF';
     firingRates_new = FR.(event);
     firingRates_opto = FRo.(event);
     trialsvec = trialNumco;
@@ -154,7 +157,7 @@ for i = 1:length(all_Sco_original)
         weight1,weight2,...
         firingRates_opto,trialsveco);
 
-    figurename = [all_Sco{1}.RatName,'_',all_Sco{1}.SessionDate];
+    figurename = [all_Sco{1}.RatName,'_',all_Sco{1}.SessionDate,'_',event];
     if Comp=='l'
         F = 'Low-mix';
     else
